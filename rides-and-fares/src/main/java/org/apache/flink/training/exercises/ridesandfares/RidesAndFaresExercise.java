@@ -19,11 +19,8 @@
 package org.apache.flink.training.exercises.ridesandfares;
 
 import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.common.state.MapState;
-import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
-import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
@@ -38,9 +35,7 @@ import org.apache.flink.training.exercises.common.datatypes.TaxiFare;
 import org.apache.flink.training.exercises.common.datatypes.TaxiRide;
 import org.apache.flink.training.exercises.common.sources.TaxiFareGenerator;
 import org.apache.flink.training.exercises.common.sources.TaxiRideGenerator;
-import org.apache.flink.training.exercises.common.utils.MissingSolutionException;
 import org.apache.flink.util.Collector;
-import scala.Tuple2;
 
 /**
  * The Stateful Enrichment exercise from the Flink training.
@@ -127,12 +122,22 @@ public class RidesAndFaresExercise {
 
     @Override
     public void flatMap1(TaxiRide ride, Collector<RideAndFare> out) throws Exception {
-      if (fareState.value)
+      if (fareState.value() != null) {
+        out.collect(new RideAndFare(ride, fareState.value()));
+        fareState.clear();
+      } else {
+        rideState.update(ride);
+      }
     }
 
     @Override
     public void flatMap2(TaxiFare fare, Collector<RideAndFare> out) throws Exception {
-
+      if (rideState.value() != null) {
+        out.collect(new RideAndFare(rideState.value(), fare));
+        rideState.clear();
+      } else {
+        fareState.update(fare);
+      }
     }
   }
 }
